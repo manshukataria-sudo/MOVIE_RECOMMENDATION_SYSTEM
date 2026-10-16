@@ -6,11 +6,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "index:neo4j": "node src/scripts/indexMoviesToNeo4j.js",
     "test": "node --test"
   },
   "dependencies": {
     "csv-parse": "^7.0.3",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "neo4j-driver": "^6.2.0"
   }
 }
