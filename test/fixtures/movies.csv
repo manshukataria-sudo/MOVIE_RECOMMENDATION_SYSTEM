@@ -1,0 +1,2 @@
+title,year,director,actors,genre,themes,description,runtime,imdb rating,gross,meta score,movieId
+"Sample, Movie",2020,Jane Director,"Actor One, Actor Two","Sci-Fi,Drama","Space and exploration; Friendship","A sample movie, with commas.",120,8.2,,75,movie-sample-2020
