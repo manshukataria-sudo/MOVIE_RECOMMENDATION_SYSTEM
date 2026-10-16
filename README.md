@@ -2,7 +2,8 @@
 
 A movie recommendation project with a Node.js and Express backend, a reusable
 movie CSV parser, and a standalone Neo4j graph indexing command. Query handling
-and recommendation generation have not been implemented yet.
+and recommendation generation have not been implemented yet. A separate
+Pinecone indexing command creates movie embeddings from the catalog.
 
 ## Current functionality
 
@@ -17,13 +18,14 @@ and recommendation generation have not been implemented yet.
 - Automated health endpoint test using Node.js's built-in test runner.
 - A reusable CSV parser that reads and normalizes movie records.
 - A standalone Neo4j indexing script for the movie CSV catalog.
+- A standalone Pinecone indexing script using Google Generative AI embeddings.
 
-The parser and Neo4j indexer are not invoked automatically by the server.
-Pinecone indexing is not implemented.
+These indexing scripts are not invoked automatically by the server.
 
 ## Requirements
 
 - Node.js with ES module support.
+- Node.js 22 or later for the Pinecone SDK.
 - npm.
 
 ## Setup
@@ -40,8 +42,8 @@ Create a local `.env` file from the example:
 cp .env.example .env
 ```
 
-The server reads `PORT` and `NODE_ENV`. The Neo4j indexing script uses these
-additional settings:
+The server reads `PORT` and `NODE_ENV`. Indexing scripts use their respective
+database and provider settings:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -50,6 +52,9 @@ additional settings:
 | `NEO4J_URI` | — | Neo4j connection URI used by the indexing script. |
 | `NEO4J_USERNAME` | — | Neo4j username used by the indexing script. |
 | `NEO4J_PASSWORD` | — | Neo4j password used by the indexing script. |
+| `GOOGLE_API_KEY` | — | Google Generative AI key used to create embeddings. |
+| `PINECONE_API_KEY` | — | Pinecone API key used by the vector indexing script. |
+| `PINECONE_INDEX_NAME` | — | Name of an existing Pinecone index with 768 dimensions. |
 
 `.env` is ignored by Git. Do not put secrets in committed files.
 
@@ -98,11 +103,43 @@ run from the project root:
 npm run index:neo4j
 ```
 
-By default this reads `movies.csv`. To use another CSV file:
+By default this reads `src/data/movies.csv`. To use another CSV file:
 
 ```sh
 npm run index:neo4j -- ./path/to/movies.csv
 ```
+
+## Pinecone vector indexing
+
+Create a Pinecone index in advance with a dimension of **768**, then set
+`GOOGLE_API_KEY`, `PINECONE_API_KEY`, and `PINECONE_INDEX_NAME` in `.env`. The
+script checks that the configured index exists, is ready, and has the expected
+dimension before writing vectors.
+
+Run from the project root:
+
+```sh
+npm run index:pinecone
+```
+
+By default the script reads `src/data/movies.csv`. Pass an optional CSV path
+to index another file:
+
+```sh
+npm run index:pinecone -- ./path/to/movies.csv
+```
+
+For each movie, the script embeds its title, actors, director, themes, genres,
+and description using LangChain's `GoogleGenerativeAIEmbeddings` with
+`gemini-embedding-001` and a 768-dimensional output. It upserts the result using
+the CSV `movieId` as the Pinecone vector ID (common in both Neo4j as well Pinecone). 
+Metadata contains `title`,`genre`, `year`, `director`, `runtime`, `imdbRating`, `gross`,
+`metascore` and `actors`; missing optional values and empty lists are omitted.
+
+Movies are embedded in batches of 50. After each batch is embedded and
+upserted, the script waits 60 seconds before requesting embeddings for the
+next batch. It does not wait after the final batch. Re-running the script
+upserts the same IDs, replacing those vectors and their metadata.
 
 ## Run
 
@@ -140,19 +177,24 @@ src/
   server.js              HTTP server startup
   config/
     env.js               Environment variable loading and validation
+    googleEmbeddings.js  Google embedding configuration
     neo4j.js             Neo4j connection configuration
+    pinecone.js          Pinecone connection configuration
   data/
     movieCsvParser.js    CSV reading and movie record normalization
   routes/
     health.js            Health-check route
   scripts/
     indexMoviesToNeo4j.js CSV-to-Neo4j indexing command
+    indexMoviesToPinecone.js CSV-to-Pinecone indexing command
   services/
     neo4jMovieIndexer.js Graph constraints, nodes, and relationship writes
+    pineconeMovieIndexer.js Movie embedding and vector upsert batches
 test/
   health.test.js         Health endpoint test
   movieCsvParser.test.js CSV parser test
   neo4jMovieIndexer.test.js Neo4j graph indexing behavior test
+  pineconeMovieIndexer.test.js Pinecone vector indexing behavior test
   fixtures/
     movies.csv           Small CSV fixture for parser tests
 .env.example             Example local configuration
@@ -161,6 +203,5 @@ package.json             Dependencies and npm scripts
 
 ## Not implemented yet
 
-- Pinecone vector index integration.
 - Query interpretation, retrieval, ranking, or recommendation endpoints.
 - React frontend.
