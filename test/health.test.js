@@ -6,7 +6,7 @@ let server;
 let baseUrl;
 
 before(async () => {
-  // choose the available port automatically to avoid conflicts with other tests
+  // Port 0 lets the OS choose an unused port for this test server.
   server = app.listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;

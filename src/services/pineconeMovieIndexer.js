@@ -2,7 +2,7 @@ export const embeddingDimensions = 768;
 export const movieBatchSize = 50;
 export const delayBetweenBatchesMs = 60_000;
 
-// converting movie data into a single string for embedding
+// Put the same searchable fields into each document in a predictable format.
 function createEmbeddingText(movie) {
   return [
     `Title: ${movie.title}`,
@@ -14,7 +14,7 @@ function createEmbeddingText(movie) {
   ].join("\n");
 }
 
-// creating metadata object for each movie to store in Pinecone
+// Pinecone metadata omits null values because they are not useful filter fields.
 function createMetadata(movie) {
   const metadata = {
     title: movie.title,
@@ -83,7 +83,7 @@ export async function indexMovieVectors({
       );
     }
 
-    // checking that each embedding vector of every movie is valid before indexing
+    // Validate the complete batch before upserting any of its vectors.
     const records = batch.map((movie, indexInBatch) => {
       const values = vectors[indexInBatch];
       validateEmbedding(values, movie.movieId);
@@ -101,7 +101,7 @@ export async function indexMovieVectors({
     );
 
     if (start + batch.length < movies.length) {
-      // pausing between batches to avoid rate limits
+      // Wait only between chunks; there is no next request after the final chunk.
       await pause(delayMs);
     }
   }

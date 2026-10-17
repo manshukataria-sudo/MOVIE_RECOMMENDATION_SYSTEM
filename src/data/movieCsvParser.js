@@ -56,6 +56,7 @@ function toMovie(row, rowNumber) {
     director: row.director.trim(),
     actors: splitList(row.actors, ","),
     genre: splitList(row.genre, ","),
+    // Theme values in the supplied CSV are separated with semicolons.
     themes: splitList(row.themes, ";"),
     description: row.description.trim(),
     runtime: parseNumber(row.runtime, "runtime", rowNumber),

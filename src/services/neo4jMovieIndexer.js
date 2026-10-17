@@ -1,5 +1,6 @@
 const batchSize = 100;
 
+// Stable identifiers keep this import safe to rerun without duplicate nodes.
 const constraints = [
   "CREATE CONSTRAINT movie_movieId_unique IF NOT EXISTS FOR (node:Movie) REQUIRE node.movieId IS UNIQUE",
   "CREATE CONSTRAINT actor_name_unique IF NOT EXISTS FOR (node:Actor) REQUIRE node.name IS UNIQUE",
@@ -72,6 +73,7 @@ async function writeBatch(transaction, movies) {
 
   await transaction.run(queries.movies, { movies: movieRows });
 
+  // Build each relationship family separately so every query uses one stable shape.
   const relationSets = [
     ["actors", makeRelationItems(movies, "actors")],
     ["directors", makeDirectorItems(movies)],
@@ -91,13 +93,14 @@ export async function indexMoviesInNeo4j(driver, movies) {
   const session = driver.session();
 
   try {
-    // creating nodes and applying constraints 
+    // Constraints are idempotent and must exist before MERGE relies on uniqueness.
     for (const constraint of constraints) {
       await session.run(constraint);
     }
 
     for (let start = 0; start < movies.length; start += batchSize) {
       const batch = movies.slice(start, start + batchSize);
+      // Each batch is transactional so its nodes and relationships stay consistent.
       await session.executeWrite((transaction) => writeBatch(transaction, batch));
     }
   } finally {

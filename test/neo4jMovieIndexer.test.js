@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { indexMoviesInNeo4j } from "../src/services/neo4jMovieIndexer.js";
 
 test("creates graph constraints and movie relationships", async () => {
+  // Capture driver calls so graph writes can be checked without a live Neo4j server.
   const statements = [];
   let sessionClosed = false;
   const session = {

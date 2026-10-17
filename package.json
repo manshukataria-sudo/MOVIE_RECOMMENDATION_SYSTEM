@@ -8,14 +8,17 @@
     "dev": "node --watch src/server.js",
     "index:neo4j": "node src/scripts/indexMoviesToNeo4j.js",
     "index:pinecone": "node src/scripts/indexMoviesToPinecone.js",
+    "chat": "node src/scripts/chatWithMovies.js",
     "test": "node --test"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.18",
     "@langchain/google-genai": "^2.3.2",
     "@pinecone-database/pinecone": "^9.0.0",
     "csv-parse": "^7.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "neo4j-driver": "^6.2.0"
+    "neo4j-driver": "^6.2.0",
+    "zod": "^4.6.7"
   }
 }

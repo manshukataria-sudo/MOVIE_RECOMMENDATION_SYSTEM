@@ -11,10 +11,9 @@ import {
   movieBatchSize
 } from "../services/pineconeMovieIndexer.js";
 
-// parsing the csv file
+// Read the full catalog before making remote embedding or vector calls.
 const csvPath = resolve(process.argv[2] || "./src/data/movies.csv");
 const movies = await parseMoviesCsv(csvPath);
-
 
 const googleConfig = getGoogleEmbeddingsConfig();
 const pineconeConfig = getPineconeConfig();
@@ -23,6 +22,7 @@ const pinecone = new Pinecone({ apiKey: pineconeConfig.apiKey });
 
 const indexDescription = await pinecone.indexes.describe(pineconeConfig.indexName);
 
+// Reject incompatible indexes before spending on embedding requests.
 if (!indexDescription.status.ready) {
   throw new Error(`Pinecone index "${pineconeConfig.indexName}" is not ready.`);
 }
@@ -33,8 +33,7 @@ if (indexDescription.dimension !== embeddingDimensions) {
   );
 }
 
-// creating the embeddings object for Google Generative AI
-// embeddings are not created until the indexMovieVectors function is called
+// Embeddings are generated later by indexMovieVectors in bounded batches.
 const embeddings = new GoogleGenerativeAIEmbeddings({
   apiKey: googleConfig.apiKey,
   model: googleConfig.model,
@@ -48,5 +47,5 @@ console.log(
   `Indexing ${movies.length} movies in batches of ${movieBatchSize}; waiting ${delayBetweenBatchesMs / 1000} seconds between embedding batches.`
 );
 
-// embeddings are created and indexed in batches to avoid rate limits
+// The service pauses between batches to reduce provider rate-limit pressure.
 await indexMovieVectors({ movies, embeddings, index });

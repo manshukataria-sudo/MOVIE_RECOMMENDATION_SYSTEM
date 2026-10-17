@@ -12,6 +12,7 @@ export function getGoogleEmbeddingsConfig() {
   return {
     apiKey,
     model: "gemini-embedding-001",
+    // This must match the configured Pinecone index dimension.
     dimensions: 768
   };
 }

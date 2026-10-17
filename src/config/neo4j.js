@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Validate connection settings when the indexing command requests them.
 export function getNeo4jConfig() {
   const uri = process.env.NEO4J_URI;
   const username = process.env.NEO4J_USERNAME;

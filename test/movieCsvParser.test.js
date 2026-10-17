@@ -5,6 +5,7 @@ import { parseMoviesCsv } from "../src/data/movieCsvParser.js";
 
 const fixturePath = fileURLToPath(new URL("./fixtures/movies.csv", import.meta.url));
 
+// The fixture includes quoted commas and a missing optional numeric value.
 test("parses and normalizes movie CSV records", async () => {
   const movies = await parseMoviesCsv(fixturePath);
 

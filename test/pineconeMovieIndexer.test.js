@@ -87,6 +87,7 @@ test("waits between embedding chunks and validates dimensions", async () => {
     batchSize: 1,
     delayMs: 60_000,
     async pause(milliseconds) {
+      // Record the requested wait without delaying the test itself.
       pauses.push(milliseconds);
     }
   });

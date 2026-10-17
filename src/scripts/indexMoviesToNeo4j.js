@@ -14,5 +14,6 @@ try {
   await indexMoviesInNeo4j(driver, movies);
   console.log(`Indexed ${movies.length} movies into Neo4j.`);
 } finally {
+  // Always release the driver, including when connectivity or indexing fails.
   await driver.close();
 }
