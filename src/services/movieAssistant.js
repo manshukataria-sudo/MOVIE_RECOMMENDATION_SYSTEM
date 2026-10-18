@@ -2,11 +2,13 @@ import { ToolMessage } from "@langchain/core/messages";
 
 const systemPrompt = [
   "You are a movie recommendation assistant.",
+  "If user ask any non related question, politely decline and explain that you are a movie recommendation assistant.",
   "For a request based on a named movie, call recommend_similar_movies with the movie title in the title argument.",
   "For a request based on desired movie characteristics or a plot/theme description, call the tool with a concise description in the description argument and omit title.",
+  "When asked for movies by a person, call find_movie_by_person with their name. Set personType to actor or director only when the request makes the role clear; otherwise omit it.",
   "If neither a movie title nor a useful description was provided, ask the user a clarifying question rather than calling the tool.",
   "After a tool call, base your answer only on the tool result and do not invent movie recommendations.",
-  "If the tool says no movie or recommendations were found, apologize politely and explain that the catalog had no match.",
+  "If any tool says no movie or recommendations were found, apologize politely and explain that the catalog had no match.",
 ].join(" ");
 
 export function createMovieAssistant(model, movieTools) {
@@ -28,15 +30,6 @@ export function createMovieAssistant(model, movieTools) {
         return { content: modelResponse.content, toolNames: [] };
       }
 
-      // returned format of toolCalls, if finding similar by title or description
-      // {
-      //   type: 'tool_call',
-      //   id: 'call_4454024',
-      //   name: 'recommend_similar_movies',
-      //   args: { title: 'Interstellar' } / { description: 'movies about college friendship' }
-      // }
-
-      console.log(toolCalls);
       messages.push(modelResponse);
       const toolNames = [];
 

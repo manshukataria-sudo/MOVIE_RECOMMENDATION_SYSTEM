@@ -51,9 +51,9 @@ database and provider settings:
 | --- | --- | --- |
 | `PORT` | `3000` | Port used by the HTTP server. Must be an integer from 1 to 65535. |
 | `NODE_ENV` | `development` | Environment name included in the startup log. |
-| `NEO4J_URI` | — | Neo4j connection URI used by the indexing script. |
-| `NEO4J_USERNAME` | — | Neo4j username used by the indexing script. |
-| `NEO4J_PASSWORD` | — | Neo4j password used by the indexing script. |
+| `NEO4J_URI` | — | Neo4j connection URI used by indexing and the person lookup tool. |
+| `NEO4J_USERNAME` | — | Neo4j username used by indexing and the person lookup tool. |
+| `NEO4J_PASSWORD` | — | Neo4j password used by indexing and the person lookup tool. |
 | `GOOGLE_API_KEY` | — | Google Generative AI key used to create embeddings. |
 | `GOOGLE_CHAT_MODEL` | `gemini-2.5-flash` | Google Gemini chat model used by the terminal chat. |
 | `PINECONE_API_KEY` | — | Pinecone API key used by the vector indexing script. |
@@ -167,6 +167,12 @@ apologize politely if the title or search results are not found. This
 terminal prototype uses Pinecone and Google embeddings directly and is not
 connected to the Express API or Neo4j.
 
+The `find_movie_by_person` tool searches the Neo4j graph. It accepts a
+`person` name and an optional `personType` (`actor` or `director`). If the
+role is clear from the query, it follows `ACTED_IN` or `DIRECTED` respectively;
+otherwise it searches both relationship types. It returns up to five movies,
+ordered by IMDb rating, and a no-match result for the LLM to explain politely.
+
 ## Run
 
 Start the server:
@@ -220,8 +226,10 @@ src/
     neo4jMovieIndexer.js Graph constraints, nodes, and relationship writes
     pineconeMovieIndexer.js Movie embedding and vector upsert batches
   tools/
+    findMovieByPerson.js Neo4j actor/director movie lookup
     recommendSimilarMovies.js Pinecone-backed similar-movies tool
 test/
+  findMovieByPerson.test.js Neo4j person tool tests
   health.test.js         Health endpoint test
   movieAssistant.test.js Tool selection flow tests
   movieCsvParser.test.js CSV parser test
