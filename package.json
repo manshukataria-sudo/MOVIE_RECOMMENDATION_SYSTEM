@@ -8,7 +8,6 @@
     "dev": "node --watch src/server.js",
     "index:neo4j": "node src/scripts/indexMoviesToNeo4j.js",
     "index:pinecone": "node src/scripts/indexMoviesToPinecone.js",
-    "chat": "node src/scripts/chatWithMovies.js",
     "test": "node --test"
   },
   "dependencies": {

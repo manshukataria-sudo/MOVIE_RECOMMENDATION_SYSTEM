@@ -17,6 +17,7 @@ export function createMovieAssistant(model, movieTools) {
     movieTools.map((movieTool) => [movieTool.name, movieTool]),
   );
 
+  // dependency injection to allow for easier testing
   return {
     async answerQuery(query) {
       const messages = [

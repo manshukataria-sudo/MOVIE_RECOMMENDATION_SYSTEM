@@ -1,9 +1,8 @@
 # Movie Recommender
 
 A movie recommendation project with a Node.js and Express backend, a reusable
-movie CSV parser, Neo4j graph indexing, and Pinecone vector indexing. A
-terminal LLM prototype can route similar-movie queries through a placeholder
-tool. The Express API and actual recommendation retrieval are not implemented.
+movie CSV parser, Neo4j graph indexing, Pinecone vector indexing, and an API
+that sends movie queries to a Google Gemini model.
 
 ## Current functionality
 
@@ -19,8 +18,7 @@ tool. The Express API and actual recommendation retrieval are not implemented.
 - A reusable CSV parser that reads and normalizes movie records.
 - A standalone Neo4j indexing script for the movie CSV catalog.
 - A standalone Pinecone indexing script using Google Generative AI embeddings.
-- A terminal chat prototype using a Google Gemini chat model and one
-  `recommend_similar_movies` tool.
+- A movie query API using a Google Gemini chat model and recommendation tools.
 
 These indexing scripts are not invoked automatically by the server.
 
@@ -55,7 +53,7 @@ database and provider settings:
 | `NEO4J_USERNAME` | — | Neo4j username used by indexing and the person lookup tool. |
 | `NEO4J_PASSWORD` | — | Neo4j password used by indexing and the person lookup tool. |
 | `GOOGLE_API_KEY` | — | Google Generative AI key used to create embeddings. |
-| `GOOGLE_CHAT_MODEL` | `gemini-2.5-flash` | Google Gemini chat model used by the terminal chat. |
+| `GOOGLE_CHAT_MODEL` | `gemini-2.5-flash` | Google Gemini chat model used by the movie API. |
 | `PINECONE_API_KEY` | — | Pinecone API key used by the vector indexing script. |
 | `PINECONE_INDEX_NAME` | — | Name of an existing Pinecone index with 768 dimensions. |
 
@@ -144,28 +142,29 @@ upserted, the script waits 60 seconds before requesting embeddings for the
 next batch. It does not wait after the final batch. Re-running the script
 upserts the same IDs, replacing those vectors and their metadata.
 
-## Terminal LLM prototype
+## Movie query API
 
 Set `GOOGLE_API_KEY`, `PINECONE_API_KEY`, and `PINECONE_INDEX_NAME` in `.env`,
-and optionally change `GOOGLE_CHAT_MODEL`. The chat program checks that the
-configured 768-dimensional Pinecone index exists and is ready, then starts the
-interactive terminal session:
+set the Neo4j connection variables, and optionally change `GOOGLE_CHAT_MODEL`.
+When the first request arrives, the API initializes the assistant and checks
+that the configured 768-dimensional Pinecone index exists and is ready.
+
+Send a movie query to the API:
 
 ```sh
-npm run chat
+curl -X POST http://localhost:3000/movie/recommend \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Recommend movies similar to Interstellar"}'
 ```
 
-Enter a movie query such as `Recommend movies similar to Interstellar.` Type
-`exit` or `quit` to leave the session. The
-`recommend_similar_movies` tool accepts either a `title` or a `description`.
+The `recommend_similar_movies` tool accepts either a `title` or a `description`.
 With a title, it embeds that title to find an exact-title metadata match in
 Pinecone, fetches the stored movie vector, then searches for its 10 nearest
 neighbors while excluding the source movie. With a description, it embeds the
 description and returns the 10 nearest matching movies. The model receives
 the retrieved movie metadata and writes the response; it is instructed to
-apologize politely if the title or search results are not found. This
-terminal prototype uses Pinecone and Google embeddings directly and is not
-connected to the Express API or Neo4j.
+apologize politely if the title or search results are not found. The API uses
+Pinecone and Google embeddings as well as Neo4j for person lookups.
 
 The `find_movie_by_person` tool searches the Neo4j graph. It accepts a
 `person` name and an optional `personType` (`actor` or `director`). If the
@@ -175,7 +174,7 @@ ordered by IMDb rating, and a no-match result for the LLM to explain politely.
 
 ## Run
 
-Start the server:
+Start the API server:
 
 ```sh
 npm start
@@ -186,6 +185,20 @@ Start in watch mode during development:
 ```sh
 npm run dev
 ```
+
+## Movie query API
+
+Send a JSON request to the movie endpoint:
+
+```sh
+curl -X POST http://localhost:3000/movie/recommend \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Recommend movies similar to Interstellar"}'
+```
+
+The API returns the assistant's response as JSON. The request must include a
+non-empty `query` string. The first request initializes the Google, Pinecone,
+and Neo4j connections used by the existing assistant.
 
 Check the health endpoint:
 
@@ -218,7 +231,7 @@ src/
   routes/
     health.js            Health-check route
   scripts/
-    chatWithMovies.js    Interactive terminal LLM session
+    chatWithMovies.js    Shared LLM setup and runAgent function for the API
     indexMoviesToNeo4j.js CSV-to-Neo4j indexing command
     indexMoviesToPinecone.js CSV-to-Pinecone indexing command
   services/

@@ -1,8 +1,6 @@
 import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import neo4j from "neo4j-driver";
 import { Pinecone } from "@pinecone-database/pinecone";
-import { createInterface } from "node:readline/promises";
-import { stdin, stdout } from "node:process";
 import { getGoogleEmbeddingsConfig } from "../config/googleEmbeddings.js";
 import { getGoogleLlmConfig } from "../config/googleLlm.js";
 import { getNeo4jConfig } from "../config/neo4j.js";
@@ -11,17 +9,9 @@ import { createMovieAssistant } from "../services/movieAssistant.js";
 import { createFindMovieByPersonTool } from "../tools/findMovieByPerson.js";
 import { createRecommendSimilarMoviesTool } from "../tools/recommendSimilarMovies.js";
 
-function formatResponse(content) {
-  if (typeof content === "string") {
-    return content;
-  }
+let assistantPromise;
 
-  return content
-    .map((part) => (typeof part === "string" ? part : part.text || ""))
-    .join("");
-}
-
-async function runChat() {
+async function createAssistant() {
   const googleChatConfig = getGoogleLlmConfig();
   const googleEmbeddingsConfig = getGoogleEmbeddingsConfig();
   const pineconeConfig = getPineconeConfig();
@@ -30,7 +20,6 @@ async function runChat() {
     neo4jConfig.uri,
     neo4j.auth.basic(neo4jConfig.username, neo4jConfig.password),
   );
-  let terminal;
 
   try {
     await neo4jDriver.verifyConnectivity();
@@ -68,42 +57,44 @@ async function runChat() {
       model: googleChatConfig.model,
       temperature: 0.3,
     }).bindTools(movieTools);
-    const assistant = createMovieAssistant(model, movieTools);
 
-    terminal = createInterface({ input: stdin, output: stdout });
-    console.log("Movie assistant ready. Enter a query, or type 'exit' to quit.");
-
-    while (true) {
-      const query = (await terminal.question("You: ")).trim();
-
-      if (query.toLowerCase() === "exit" || query.toLowerCase() === "quit") {
-        break;
-      }
-
-      if (!query) {
-        continue;
-      }
-
-      try {
-        const response = await assistant.answerQuery(query);
-
-        for (const toolName of response.toolNames) {
-          console.log(`Selected tool: ${toolName}`);
-        }
-
-        console.log(`Assistant: ${formatResponse(response.content)}`);
-      } catch (error) {
-        console.error("Unable to process the query:", error);
-      }
-    }
-  } finally {
-    if (terminal) {
-      terminal.close();
-    }
-
-    // Release Neo4j connections even when setup or a query fails.
+    return createMovieAssistant(model, movieTools);
+  } catch (error) {
     await neo4jDriver.close();
+    throw error;
   }
 }
 
-await runChat();
+// this is **IMPORTANT** promise caching or single flight initialization
+async function getAssistant() {
+  if (!assistantPromise) {
+    assistantPromise = createAssistant();    
+    // here saved the unresolved promise, so that if multiple requests come in at the same time, 
+    // they will all wait for the same promise to resolve instead of creating multiple instances of the assistant.
+  }
+
+  try {
+    return await assistantPromise;
+  } catch (error) {
+    // Let a later request retry, if first-time provider setup failed.
+    // we cannot use the half initialized assistant, to fetch the query
+    // so, it restarts the initialization process for the next request
+    assistantPromise = undefined;
+    throw error;
+  }
+}
+
+// Reuse the same configured model and database connections for each request.
+// i.e why initialised once and reused for each request. 
+// This avoids the overhead of reinitializing the model and database connections for every request,
+// which can be time-consuming and resource-intensive. 
+// By reusing the same instances, we can improve performance and reduce latency for subsequent requests.
+export async function runAgent(query) {
+  const assistant = await getAssistant();
+  const result = await assistant.answerQuery(query);
+
+  return {
+    answer: result.content,
+    tools: result.toolNames
+  };
+}
