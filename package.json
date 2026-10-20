@@ -7,8 +7,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "index:neo4j": "node src/scripts/indexMoviesToNeo4j.js",
-    "index:pinecone": "node src/scripts/indexMoviesToPinecone.js",
-    "test": "node --test"
+    "index:pinecone": "node src/scripts/indexMoviesToPinecone.js"
   },
   "dependencies": {
     "@langchain/core": "^1.2.18",
